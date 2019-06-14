@@ -1,0 +1,109 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+#-------------------------------------------------------------------------------
+Description: >
+  S3 stack. Creates a data and log bucket with appropriate policies
+
+#-------------------------------------------------------------------------------
+Parameters:
+  BucketName:
+    Description: Name of the S3 bucket
+    Type: String
+
+  TransitionTimeToIAInDays:
+    Description: duration in days after which objects are moved to IA
+    Type: Number
+    MinValue: 1
+    Default: 30
+
+  LogExpirationTimeInDays:
+    Description: duraction in day after which log objects are deleted
+    Type: Number
+    MinValue: 1
+    Default: 15
+
+#-------------------------------------------------------------------------------
+Resources:
+  #
+  #-----------------------------------------------------------------------------
+  # S3 Bucket (for logs)
+  #-----------------------------------------------------------------------------
+  LogBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      # Name for this bucket
+      BucketName: !Sub "${BucketName}-logs"
+      # Enable Server Side encryption
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      # Owner gets FULL_CONTROL. No one else has access rights.
+      AccessControl: "LogDeliveryWrite"
+      # Configure public access
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      # Lifecycle policies
+      # expire logs after x days
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireAfterDays
+            Status: Enabled
+            ExpirationInDays: !Ref LogExpirationTimeInDays
+            NoncurrentVersionExpirationInDays: !Ref LogExpirationTimeInDays
+    DeletionPolicy: Delete
+  #
+  #-----------------------------------------------------------------------------
+  # S3 Bucket (for data)
+  #-----------------------------------------------------------------------------
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      # Name for this bucket
+      BucketName: !Ref BucketName
+      # Send access logs to another bucket
+      LoggingConfiguration:
+        DestinationBucketName: !Ref 'LogBucket'
+        LogFilePrefix: !Ref BucketName
+      # Enable Server Side encryption
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      # Owner gets FULL_CONTROL. No one else has access rights.
+      AccessControl: Private
+      # AccessControl: Public
+      # Configure public access
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      # Lifecycle policies
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: !Ref TransitionTimeToIAInDays
+    DeletionPolicy: Delete
+
+
+#-------------------------------------------------------------------------------
+Outputs:
+  DataBucketName:
+    Description: Name of the created bucket
+    Value: !Ref 'DataBucket'
+
+  DataBucketArn:
+    Description: ARN of the created bucket
+    Value: !GetAtt DataBucket.Arn
+
+  LogBucketName:
+    Description: Name of the created bucket
+    Value: !Ref 'LogBucket'

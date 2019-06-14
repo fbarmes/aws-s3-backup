@@ -1,0 +1,146 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+
+#-------------------------------------------------------------------------------
+Description: >
+  AWS S3 backup : master template
+
+#-------------------------------------------------------------------------------
+Metadata:
+  #
+  Authors:
+    Description: F. Barmes
+  #
+  #
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "General Parameters"
+        Parameters:
+          - EnvironmentName
+      -
+        Label:
+          default: "S3 Parameters"
+        Parameters:
+          - BucketName
+          - TransitionTimeToIAInDays
+          - LogExpirationTimeInDays
+      -
+        Label:
+          default: "IAM Parameters"
+        Parameters:
+          - IAMPath
+    ParameterLabels:
+      EnvironmentName:
+        default: "Name of this environement"
+      BucketName:
+        default: "Name of the data bucket"
+      TransitionTimeToIAInDays:
+        default: "time (in days) before moving objects to IA"
+      LogExpirationTimeInDays:
+        default: "time (in days) before deleting log objects"
+      IAMPath:
+        default: "IAM path for the created IAM resources"
+
+#-------------------------------------------------------------------------------
+Parameters:
+  #-------------------------------------
+  # CFN parameters
+  #-------------------------------------
+  #
+  CfnBucket:
+    Description: The template bucket for the CloudFormation templates
+    Type: String
+    Default: "fbarmes-cfn-public"
+  #
+  CfnPath:
+    Type: String
+    Description: a path in the S3 bucket to find the CloudFormation templates root
+    Default: "s3-backup"
+  #
+  #-------------------------------------
+  # General parameters
+  #-------------------------------------
+  EnvironmentName:
+    Description: Environment name (dev, prod)
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+  #
+  #-------------------------------------
+  # S3 parameters
+  #-------------------------------------
+  BucketName:
+    Description: Name of the S3 bucket
+    Type: String
+    Default: s3-backup
+  #
+  TransitionTimeToIAInDays:
+    Description: time (in days) before moving objects to IA tier
+    Type: Number
+    MinValue: 1
+    Default: 30
+  #
+  LogExpirationTimeInDays:
+    Description: time (in days) before deleting log files
+    Type: Number
+    MinValue: 1
+    Default: 15
+  #
+  #-------------------------------------
+  # IAM parameters
+  #-------------------------------------
+  IAMPath:
+    Description: IAM Path for the resources created by this stack
+    Type: String
+    Default: '/s3-backup/'
+
+
+#-------------------------------------------------------------------------------
+Resources:
+  #
+  #-----------------------------------------------------------------------------
+  # S3Stack
+  #-----------------------------------------------------------------------------
+  S3Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${CfnBucket}/${CfnPath}/templates/010-s3.yml
+      Parameters:
+        BucketName: !Ref 'BucketName'
+        TransitionTimeToIAInDays: !Ref 'TransitionTimeToIAInDays'
+        LogExpirationTimeInDays: !Ref 'LogExpirationTimeInDays'
+  #
+  #-----------------------------------------------------------------------------
+  # IAMStack
+  #-----------------------------------------------------------------------------
+  IAMStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${CfnBucket}/${CfnPath}/templates/011-iam.yml
+      Parameters:
+        BucketArn: !GetAtt S3Stack.Outputs.DataBucketArn
+        IAMPath: !Ref 'IAMPath'
+
+#-------------------------------------------------------------------------------
+Outputs:
+  #
+  DataBucketName:
+    Description: Name of the bucket created
+    Value: !GetAtt S3Stack.Outputs.DataBucketName
+  #
+  UserName:
+    Description: Name of the user for this stack
+    Value: !GetAtt IAMStack.Outputs.UserName
+  #
+  AccessKey:
+    Description: Access key for accessing the S3 Bucket
+    Value: !GetAtt IAMStack.Outputs.AccessKey
+  #
+  SecretKey:
+    Description: Secret key for accessing the S3 Bucket
+    Value: !GetAtt IAMStack.Outputs.SecretKey

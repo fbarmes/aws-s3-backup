@@ -1,0 +1,97 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+
+#-------------------------------------------------------------------------------
+Description: >
+  IAM stack
+
+#-------------------------------------------------------------------------------
+Parameters:
+  #
+  IAMPath:
+    Description: IAM Path for the resources created by this stack
+    Type: String
+    Default: '/s3-backup/'
+  #
+  BucketArn:
+    Description: Arn of the data bucket which this IAM configuration applies to
+    Type: String
+
+#-------------------------------------------------------------------------------
+Resources:
+  #
+  #-----------------------------------------------------------------------------
+  # Group
+  #-----------------------------------------------------------------------------
+  BackupGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      Path: !Ref IAMPath
+  #
+  #-----------------------------------------------------------------------------
+  # User
+  #-----------------------------------------------------------------------------
+  BackupUser:
+    Type: AWS::IAM::User
+    Properties:
+      Path: !Ref IAMPath
+  #
+  #-----------------------------------------------------------------------------
+  # Define access key for user
+  #-----------------------------------------------------------------------------
+  BackupUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      Serial: 1
+      Status: Active
+      UserName: !Ref BackupUser
+  #
+  #-----------------------------------------------------------------------------
+  # Add User to Group
+  #-----------------------------------------------------------------------------
+  AddUsertoBackupGroup:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName: !Ref 'BackupGroup'
+      Users:
+        - !Ref 'BackupUser'
+  #
+  #-----------------------------------------------------------------------------
+  # Define s3 access policy
+  # - can do anything on one bucket
+  # - can list buckets
+  #-----------------------------------------------------------------------------
+  PolicyCanAccessS3BackupBucket:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "s3:*"
+            Resource: !Ref BucketArn
+          - Effect: "Allow"
+            Action : "s3:List*"
+            Resource: "arn:aws:s3:::*"
+      PolicyName: CanAccessS3BackupBucket
+      Groups: [!Ref BackupGroup]
+
+#-------------------------------------------------------------------------------
+Outputs:
+
+  GroupName:
+    Value: !Ref 'BackupGroup'
+    Description: Name of the created group
+
+  UserName:
+    Value: !Ref 'BackupUser'
+    Description: Name of the created user
+
+  AccessKey:
+    Value: !Ref 'BackupUserAccessKey'
+    Description: AWSAccessKeyId of new user
+
+  SecretKey:
+    Value: !GetAtt [BackupUserAccessKey, SecretAccessKey]
+    Description: AWSSecretAccessKey of new user
