@@ -25,7 +25,14 @@ Metadata:
           default: "S3 Parameters"
         Parameters:
           - BucketName
-          - TransitionTimeToIAInDays
+          - T1TimeInDays
+          - T1StorageClass
+          - T2TimeInDays
+          - T2StorageClass
+          - EnableVersioning
+          - NoncurrentVersionExpirationInDays
+          - ExpirationInDays
+          - EnableLogging
           - LogExpirationTimeInDays
       -
         Label:
@@ -37,10 +44,6 @@ Metadata:
         default: "Name of this environement"
       BucketName:
         default: "Name of the data bucket"
-      TransitionTimeToIAInDays:
-        default: "time (in days) before moving objects to IA"
-      LogExpirationTimeInDays:
-        default: "time (in days) before deleting log objects"
       IAMPath:
         default: "IAM path for the created IAM resources"
 
@@ -78,18 +81,67 @@ Parameters:
     Description: Name of the S3 bucket
     Type: String
     Default: s3-backup
-  #
-  TransitionTimeToIAInDays:
-    Description: time (in days) before moving objects to IA tier
+
+  T1TimeInDays:
+    Description: 'time fater which an object undergoes Transition T1 (IT, IA or OneZoneIA)'
     Type: Number
-    MinValue: 1
+    MinValue: 30
     Default: 30
-  #
+
+  T1StorageClass:
+    Description: 'target storage class for transition T1'
+    Type: String
+    Default: STANDARD_IA
+    AllowedValues:
+      - INTELLIGENT_TIERING
+      - STANDARD_IA
+      - ONEZONE_IA
+
+  T2TimeInDays:
+    Description: 'time fater which an object undergoes Transition T2 (to GLACIER)'
+    Type: Number
+    MinValue: 30
+    Default: 90
+
+  T2StorageClass:
+    Description: 'target storage class for transition T2'
+    Type: String
+    Default: GLACIER
+    AllowedValues:
+      - GLACIER
+
+  EnableVersioning:
+    Description: 'Enable versioning to keep a backup if objects change.'
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false', 'false-but-was-true']
+
+  NoncurrentVersionExpirationInDays:
+    Description: 'Delete old version of objects after X days (set 0 to disable)'
+    Type: Number
+    Default: 7
+    MinValue: 0
+
+  ExpirationInDays:
+    Description: 'Delete object after X days (set 0 to disable)'
+    Type: Number
+    Default: 0
+    MinValue: 0
+
+  EnableLogging:
+    Description: Enable a bucket that stores the logs
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: false
+
   LogExpirationTimeInDays:
-    Description: time (in days) before deleting log files
+    Description: duration in day after which log objects are deleted
     Type: Number
     MinValue: 1
     Default: 15
+
   #
   #-------------------------------------
   # IAM parameters
@@ -112,7 +164,14 @@ Resources:
       TemplateURL: !Sub https://s3.amazonaws.com/${CfnBucket}/${CfnPath}/templates/010-s3.yml
       Parameters:
         BucketName: !Ref 'BucketName'
-        TransitionTimeToIAInDays: !Ref 'TransitionTimeToIAInDays'
+        T1TimeInDays: !Ref 'T1TimeInDays'
+        T1StorageClass: !Ref 'T1StorageClass'
+        T2TimeInDays: !Ref 'T2TimeInDays'
+        T2StorageClass: !Ref 'T2StorageClass'
+        EnableVersioning: !Ref 'EnableVersioning'
+        NoncurrentVersionExpirationInDays: !Ref 'NoncurrentVersionExpirationInDays'
+        ExpirationInDays: !Ref 'ExpirationInDays'
+        EnableLogging: !Ref 'EnableLogging'
         LogExpirationTimeInDays: !Ref 'LogExpirationTimeInDays'
   #
   #-----------------------------------------------------------------------------

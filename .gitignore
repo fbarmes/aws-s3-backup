@@ -1,3 +1,5 @@
 target/
 temp/
+tmp/
+Makefile
 Makefile.env

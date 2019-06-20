@@ -14,6 +14,21 @@ The backup stack handles the following feature :
 * Logging configuration of S3 access to another bucket
 
 
+## Architecture overview
+
+![architecture-overview](images/architecture-overview.png)
+
+The principle is a follows:
+  * The user works with files stored on the NAS.
+  * The NAS copies data to the amazon S3 bucket
+
+Once in S3 data can do the following :
+  * Lifecycle Transitions:
+    * T1: move to one of (IA, One Zone IA, Intelligent-Tiering ) after 15 days.
+    * T2: move to Glacier after 90 days.
+    * T3: Move to Glacier Deep Archive after 180 days.
+  * Versionning (if enabled): creates new versions as files are modified or deleted. Old version are removed after 7 days.
+
 
 ## FAQ
 
@@ -30,6 +45,10 @@ The stack creates a user and group dedicated for backup operation. the created u
 This stack creates a set of resource dedicated to the backup.
 
 The buckets are private and accessible by the backup user. The backup user only has access to the backup bucket.
+
+**Can I apply different transition time for different file types ?**  
+No. this feature is not supported. With S3 you can specify transition by file prefix, not by file type.
+
 
 **Can I apply different lifecycle policies in the bucket ?**
 
@@ -53,25 +72,14 @@ There is no deletion protection in the bucket.
 
 
 
-## Architecture
-
-The principle is a follows.
-
-* The user works with files stored on the NAS.
-
-* The NAS copied data to the amazon S3 bucket
-
-* As files age on S3, they are moved to lower tier (Infrequent Access and then Glacier).
-
-
 
 ## Features
 
 ### Encryption
 
-Data is encrypted in transit using the standard HTTPS mechanism.
+**Encryption in transit**: Data is encrypted in transit using the standard HTTPS mechanism.
 
-Data is encrypted at rest using server side encryption.
+**Encryption at rest**: Data is encrypted at rest using server side encryption.
 
 
 
