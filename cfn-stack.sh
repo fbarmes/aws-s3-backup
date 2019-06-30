@@ -31,9 +31,17 @@ AWS_IAM_CAPABILITIES+=("CAPABILITY_AUTO_EXPAND")
 AWS_MASTER_TEMPLATE_FILE="https://s3.amazonaws.com/${AWS_CFN_PARAMS[CfnBucket]}/${AWS_CFN_PARAMS[CfnPath]}/master.yml"
 
 #-------------------------------------------------------------------------------
-# Variable specific to this stack
+# Override variabbles specific to this stack
+# add a file called cfn-stack-param.sh
+# define cloudformation variables as key/values in AWS_CFN_PARAMS such as :
+#  AWS_CFN_PARAMS["my-param"]="my-param-value"
 #-------------------------------------------------------------------------------
-AWS_CFN_PARAMS["BucketName"]="fbarmes-s3-backup"
+if [ -f "${INSTALL_DIR}/cfn-stack-params.sh" ]; then
+  echo  "Sourcing ${INSTALL_DIR}/cfn-stack-params.sh"
+  source "${INSTALL_DIR}/cfn-stack-params.sh"
+fi
+
+
 
 #-------------------------------------------------------------------------------
 # usage function
@@ -137,10 +145,14 @@ aws_create_or_update() {
 
   readonly command="aws cloudformation ${action} ${AWS_OPTS}"
 
-  # echo "command = ${command}"
-  set -x
-  ${command}
-  set +x
+  if [ ${DRY_RUN} = true ] ; then
+    echo ${command}
+  else
+    set -x
+    ${command}
+    set +x
+  fi
+
 }
 
 #-------------------------------------------------------------------------------
@@ -159,10 +171,13 @@ aws_delete() {
 
   readonly command="aws cloudformation ${action} ${AWS_OPTS}"
 
-  # echo "command = ${command}"
-  set -x
-  ${command}
-  set +x
+  if [ ${DRY_RUN} = true ] ; then
+    echo ${command}
+  else
+    set -x
+    ${command}
+    set +x
+  fi
 }
 
 
