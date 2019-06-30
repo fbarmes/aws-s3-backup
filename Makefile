@@ -28,6 +28,18 @@ include Makefile.env
 .PHONY: all
 all: init package
 
+#-------------------------------------------------------------------------------
+.PHONY: help
+help:
+	@echo ""
+	@echo "Available targets are :"
+	@echo "  echo: display the value of some variables"
+	@echo "  all: package this project"
+	@echo "  package: create this project's artifact (in target directory)"
+	@echo "  clean: remove the content of the target directory"
+	@echo "  publish: copy the files to the cloudformation bucket"
+	@echo "  clean-aws: delete the files in the cloudformation bucket"
+	@echo ""
 
 #-------------------------------------------------------------------------------
 .PHONY: echo

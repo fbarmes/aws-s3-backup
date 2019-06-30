@@ -30,6 +30,29 @@ Once in S3 data can do the following :
   * Versionning (if enabled): creates new versions as files are modified or deleted. Old version are removed after 7 days.
 
 
+## Use this stack
+
+### Launch stack from this page
+
+| AWS Region Code | Name | Launch |
+| --- | --- | ---
+| eu-west-3   | EU (Paris)   | [![cloudformation-launch-stack](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-3#/stacks/new?stackName=s3-backup-stack&templateURL=https://fbarmes-cfn-public.s3.eu-west-3.amazonaws.com/aws-s3-backup/master.yml)
+
+
+### Launch from source
+
+```bash
+
+# clone this repositoy
+git clone <url of this repository>
+
+# generate this project's package
+make
+
+# install stack using aws-cli
+aws-stack install
+```
+
 ## FAQ
 
 **Where does my data go  ?**
@@ -105,3 +128,26 @@ Versionning of files on amazon S3 is not yet implemented by this stack
 
 ### Cross Region Replication
 Cross Region Replication is not implement by this stack.
+
+
+
+## Build and Deploy
+
+### Build and package this project
+
+Build and deploy tasks are done using the following files:
+ * `Makefile` : package and deploy CFN scripts
+ * `aws-stack.sh`: create, update, delete the stack using CloudFormation
+
+
+**`Makefile` targets**
+ * `init`: init the package structure
+ * `package`: make this project artifact
+ * `publish`: deploy the cloudformation script to the CFN bucket
+ * `clean`: delete the package structure
+ * `clean-aws`: delete the script in the CFN bucket
+
+**`aws-stack.sh` actions**
+ * `aws-create`: deploy a new AWS stack from the CFN master template
+ * `aws-update`: update the AWS stack
+ * `aws-delete`: delete the AWS stack
