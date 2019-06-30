@@ -1,0 +1,200 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+#-------------------------------------------------------------------------------
+Description: >
+  S3 stack. Creates a data and log bucket with appropriate policies
+
+#-------------------------------------------------------------------------------
+Parameters:
+  BucketName:
+    Description: Name of the S3 bucket
+    Type: String
+    AllowedPattern: ".+"
+
+  T1TimeInDays:
+    Description: 'time fater which an object undergoes Transition T1 (IT, IA or OneZoneIA)'
+    Type: Number
+    MinValue: 30
+    Default: 30
+
+  T1StorageClass:
+    Description: 'target storage class for transition T1'
+    Type: String
+    Default: STANDARD_IA
+    AllowedValues:
+      - INTELLIGENT_TIERING
+      - STANDARD_IA
+      - ONEZONE_IA
+
+  T2TimeInDays:
+    Description: 'time fater which an object undergoes Transition T2 (to GLACIER)'
+    Type: Number
+    MinValue: 30
+    Default: 90
+
+  T2StorageClass:
+    Description: 'target storage class for transition T2'
+    Type: String
+    Default: GLACIER
+    AllowedValues:
+      - GLACIER
+
+  EnableVersioning:
+    Description: 'Enable versioning to keep a backup if objects change.'
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false', 'false-but-was-true']
+
+  NoncurrentVersionExpirationInDays:
+    Description: 'Delete old version of objects after X days (set 0 to disable)'
+    Type: Number
+    Default: 7
+    MinValue: 0
+
+  ExpirationInDays:
+    Description: 'Delete object after X days (set 0 to disable)'
+    Type: Number
+    Default: 0
+    MinValue: 0
+
+  EnableLogging:
+    Description: Enable a bucket that stores the logs
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: false
+
+  LogExpirationTimeInDays:
+    Description: duration in day after which log objects are deleted
+    Type: Number
+    MinValue: 1
+    Default: 15
+
+
+#-------------------------------------------------------------------------------
+Conditions:
+  isLoggingEnabled: !Equals [ !Ref EnableLogging, true ]
+  HasVersioning: !Equals [!Ref EnableVersioning, true]
+  HadVersioning: !Equals [!Ref EnableVersioning, 'false-but-was-true']
+  HasNoncurrentVersionExpirationInDays: !Not [!Equals [!Ref NoncurrentVersionExpirationInDays, 0]]
+  HasExpirationInDays: !Not [!Equals [!Ref ExpirationInDays, 0]]
+
+#-------------------------------------------------------------------------------
+Resources:
+  #
+  #-----------------------------------------------------------------------------
+  # S3 Bucket (for logs)
+  #-----------------------------------------------------------------------------
+  LogBucket:
+    Type: AWS::S3::Bucket
+    Condition: isLoggingEnabled
+    Properties:
+      # Name for this bucket
+      BucketName: !Sub "${BucketName}-logs"
+      # Enable Server Side encryption
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      # Owner gets FULL_CONTROL. No one else has access rights.
+      AccessControl: "LogDeliveryWrite"
+      # Configure public access
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      #
+      # Lifecycle policies
+      # expire logs after x days
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireAfterDays
+            Status: Enabled
+            ExpirationInDays: !Ref LogExpirationTimeInDays
+            NoncurrentVersionExpirationInDays: !Ref LogExpirationTimeInDays
+    DeletionPolicy: Delete
+  #
+  #-----------------------------------------------------------------------------
+  # S3 Bucket (for data)
+  #-----------------------------------------------------------------------------
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      #
+      # Name for this bucket
+      BucketName: !Ref BucketName
+      #
+      # Send access logs to another bucket
+      LoggingConfiguration: !If
+        - isLoggingEnabled
+        - DestinationBucketName: !Ref 'LogBucket'
+          LogFilePrefix: !Ref 'BucketName'
+        - !Ref 'AWS::NoValue'
+      #
+      # LoggingConfiguration:
+      #   DestinationBucketName: !If [isLoggingEnabled, !Ref 'LogBucket', !Ref 'AWS::NoValue' ]
+      #   LogFilePrefix: !If [isLoggingEnabled, !Ref 'BucketName', !Ref 'AWS::NoValue']
+      # Enable Server Side encryption
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      #
+      # Owner gets FULL_CONTROL. No one else has access rights.
+      AccessControl: Private
+      #
+      # Configure public access
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      #
+      # Lifecycle policies
+      LifecycleConfiguration:
+        Rules:
+          # Rule: abort any pending multipart upload after 7 days
+          - Id: 'Abort Incomplete MultipartUpload'
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+            Status: Enabled
+          #
+          # Rule: Delete old versions after X days
+          - Id: 'Delete Old Versions'
+            NoncurrentVersionExpirationInDays: !If [HasNoncurrentVersionExpirationInDays, !Ref NoncurrentVersionExpirationInDays, 1]
+            Status: !If [HasNoncurrentVersionExpirationInDays, Enabled, Disabled]
+          #
+          # Rule: Delete current versions after X days
+          - Id: 'Delete current Versions'
+            ExpirationInDays: !If [HasExpirationInDays, !Ref ExpirationInDays, 1]
+            Status: !If [HasExpirationInDays, Enabled, Disabled]
+          #
+          # Rule: Transition objects to different storage class
+          - Id: 'Lifecycle Transitions for all objects'
+            Transitions:
+            # Transition T1
+            - TransitionInDays: !Ref 'T1TimeInDays'
+              StorageClass: !Ref T1StorageClass
+            # Transition T2
+            - TransitionInDays: !Ref 'T2TimeInDays'
+              StorageClass: !Ref T2StorageClass
+            Status: Enabled
+      #
+      # Versionning
+      VersioningConfiguration: !If [HasVersioning, {Status: Enabled}, !If [HadVersioning, {Status: Suspended}, !Ref 'AWS::NoValue']]
+
+    DeletionPolicy: Delete
+
+
+#-------------------------------------------------------------------------------
+Outputs:
+  DataBucketName:
+    Description: Name of the created bucket
+    Value: !Ref 'DataBucket'
+
+  DataBucketArn:
+    Description: ARN of the created bucket
+    Value: !GetAtt DataBucket.Arn
