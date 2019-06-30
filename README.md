@@ -36,7 +36,8 @@ Once in S3 data can do the following :
 
 | AWS Region Code | Name | Launch |
 | --- | --- | ---
-| eu-west-3   | EU (Paris)   | [![cloudformation-launch-stack](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-3#/stacks/new?stackName=s3-backup-stack&templateURL=https://fbarmes-cfn-public.s3.eu-west-3.amazonaws.com/aws-s3-backup/master.yml)
+| eu-west-3   | EU (Paris)   | [![cloudformation-launch-stack](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-3#/stacks/new?stackName=s3-backup-stack&templateURL=https://s3.amazonaws.com/fbarmes-cfn-public/aws-s3-backup/master.yml)
+
 
 
 ### Launch from source
