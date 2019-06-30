@@ -10,6 +10,7 @@ Parameters:
   BucketName:
     Description: Name of the S3 bucket
     Type: String
+    AllowedPattern: ".+"
 
   T1TimeInDays:
     Description: 'time fater which an object undergoes Transition T1 (IT, IA or OneZoneIA)'
@@ -197,7 +198,3 @@ Outputs:
   DataBucketArn:
     Description: ARN of the created bucket
     Value: !GetAtt DataBucket.Arn
-
-  # LogBucketName:
-  #   Description: Name of the created bucket
-  #   Value: !Ref 'LogBucket'

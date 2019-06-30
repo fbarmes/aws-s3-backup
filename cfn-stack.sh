@@ -16,23 +16,24 @@ MAIN_ACTION=""
 #-------------------------------------------------------------------------------
 # global functional vars
 #-------------------------------------------------------------------------------
-
 AWS_PROFILE=""
 AWS_STACK_NAME="s3-backup-stack"
 AWS_MASTER_TEMPLATE_FILE="master.yml"
 
-
 declare -A AWS_CFN_PARAMS
-AWS_CFN_PARAMS["CfnBucket"]="fbarmes-public"
+AWS_CFN_PARAMS["CfnBucket"]="fbarmes-cfn-public"
 AWS_CFN_PARAMS["CfnPath"]="aws-s3-backup"
 
 declare -a AWS_IAM_CAPABILITIES
 AWS_IAM_CAPABILITIES+=("CAPABILITY_IAM")
 AWS_IAM_CAPABILITIES+=("CAPABILITY_AUTO_EXPAND")
 
-
 AWS_MASTER_TEMPLATE_FILE="https://s3.amazonaws.com/${AWS_CFN_PARAMS[CfnBucket]}/${AWS_CFN_PARAMS[CfnPath]}/master.yml"
 
+#-------------------------------------------------------------------------------
+# Variable specific to this stack
+#-------------------------------------------------------------------------------
+AWS_CFN_PARAMS["BucketName"]="fbarmes-s3-backup"
 
 #-------------------------------------------------------------------------------
 # usage function
@@ -125,7 +126,7 @@ aws_create_or_update() {
   #-- start option string
   AWS_OPTS=""
 
-  #-- add profil if any
+  #-- add profile if any
   if [ "${AWS_PROFILE:+x}" = "x" ]; then
     AWS_OPTS="${AWS_OPTS} --profile ${AWS_PROFILE}"
   fi
@@ -136,8 +137,34 @@ aws_create_or_update() {
 
   readonly command="aws cloudformation ${action} ${AWS_OPTS}"
 
-  echo "${command}"
+  # echo "command = ${command}"
+  set -x
+  ${command}
+  set +x
 }
+
+#-------------------------------------------------------------------------------
+# aws_delete : delete the AWS stack
+aws_delete() {
+  readonly action="delete-stack"
+
+  #-- start option string
+  AWS_OPTS=""
+
+  #-- add profile if any
+  if [ "${AWS_PROFILE:+x}" = "x" ]; then
+    AWS_OPTS="${AWS_OPTS} --profile ${AWS_PROFILE}"
+  fi
+  AWS_OPTS="${AWS_OPTS} --stack-name ${AWS_STACK_NAME}"
+
+  readonly command="aws cloudformation ${action} ${AWS_OPTS}"
+
+  # echo "command = ${command}"
+  set -x
+  ${command}
+  set +x
+}
+
 
 #-------------------------------------------------------------------------------
 # build the list of ParameterKey / ParameterValue for
@@ -157,14 +184,6 @@ get_aws_cfn_parameters() {
 get_aws_iam_capabilities() {
   result=${AWS_IAM_CAPABILITIES[@]};
   echo ${result}
-}
-
-
-#-------------------------------------------------------------------------------
-# aws_delete : delete the AWS stack
-aws_delete() {
-  echo "Start aws_create_or_update with action=delete"
-  true;
 }
 
 #-------------------------------------------------------------------------------

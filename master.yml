@@ -61,7 +61,7 @@ Parameters:
   CfnPath:
     Type: String
     Description: a path in the S3 bucket to find the CloudFormation templates root
-    Default: "s3-backup"
+    Default: "aws-s3-backup"
   #
   #-------------------------------------
   # General parameters
@@ -78,9 +78,9 @@ Parameters:
   # S3 parameters
   #-------------------------------------
   BucketName:
-    Description: Name of the S3 bucket
+    Description: Name of the S3 bucket that is created
     Type: String
-    Default: s3-backup
+    AllowedPattern: ".+"
 
   T1TimeInDays:
     Description: 'time fater which an object undergoes Transition T1 (IT, IA or OneZoneIA)'
