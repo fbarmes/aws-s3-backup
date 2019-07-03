@@ -70,7 +70,9 @@ Resources:
         Statement:
           - Effect: "Allow"
             Action: "s3:*"
-            Resource: !Ref BucketArn
+            Resource:
+              - !Sub "${BucketArn}"
+              - !Sub "${BucketArn}/*"
           - Effect: "Allow"
             Action : "s3:List*"
             Resource: "arn:aws:s3:::*"
